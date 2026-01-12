@@ -1,0 +1,166 @@
+﻿<Window x:Class="OutlookToClaudeApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:OutlookToClaudeApp"
+        mc:Ignorable="d"
+        Title="Calendar Sync for AI" Height="700" Width="1100"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Calendar Sync for AI"
+                       FontSize="24" FontWeight="Bold" HorizontalAlignment="Left"/>
+            <TextBlock Text="Developed by Jibaro En La Luna LLC"
+                       FontSize="10" Foreground="#999" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,5"/>
+        </Grid>
+
+        <!-- Filters and Settings -->
+        <Grid Grid.Row="1" Margin="0,0,0,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Date Range -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="From:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <DatePicker Grid.Row="0" Grid.Column="1" x:Name="StartDatePicker" Margin="0,0,20,10"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="To:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <DatePicker Grid.Row="0" Grid.Column="3" x:Name="EndDatePicker" Margin="0,0,20,10"/>
+
+            <!-- Load Button -->
+            <Button Grid.Row="1" Grid.Column="1" Content="Load Events" x:Name="LoadEventsButton"
+                    Click="LoadEventsButton_Click" Width="120" Height="35" HorizontalAlignment="Left"
+                    Background="#2196F3" Foreground="White" BorderThickness="0" FontWeight="SemiBold"/>
+        </Grid>
+
+        <!-- Main Content: Events List + Details -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Events List -->
+            <Border Grid.Column="0" Background="White" CornerRadius="8"
+                    BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,10,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#2196F3" Padding="10" CornerRadius="8,8,0,0">
+                        <TextBlock Text="Calendar Events" FontSize="16" FontWeight="Bold"
+                                   Foreground="White"/>
+                    </Border>
+
+                    <ListBox Grid.Row="1" x:Name="EventsListBox"
+                             SelectionChanged="EventsListBox_SelectionChanged"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="10,8" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                                  VerticalAlignment="Top" Margin="0,2,10,0"/>
+
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding DisplayDate}"
+                                                       FontSize="11" Foreground="#666"/>
+                                            <TextBlock Text="{Binding DisplayTitle}"
+                                                       FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding DisplayTime}"
+                                                       FontSize="11" Foreground="#999"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Grid.Row="2" Background="#F5F5F5" Padding="10" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Select All" x:Name="SelectAllButton"
+                                    Click="SelectAllButton_Click" Margin="0,0,10,0" Padding="10,5"/>
+                            <Button Content="Clear All" x:Name="ClearAllButton"
+                                    Click="ClearAllButton_Click" Padding="10,5"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Event Details -->
+            <Border Grid.Column="1" Background="White" CornerRadius="8"
+                    BorderBrush="#E0E0E0" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#2196F3" Padding="10" CornerRadius="8,8,0,0">
+                        <TextBlock Text="Event Details" FontSize="16" FontWeight="Bold"
+                                   Foreground="White"/>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="DetailsPanel" Margin="20">
+                            <TextBlock Text="Select an event to view details"
+                                       Foreground="#999" FontStyle="Italic"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Footer: Export Controls -->
+        <Border Grid.Row="3" Background="White" CornerRadius="8"
+                BorderBrush="#E0E0E0" BorderThickness="1" Padding="15" Margin="0,20,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="StatusText" Grid.Column="0"
+                           Text="Ready" VerticalAlignment="Center"
+                           FontSize="12" Foreground="#666"/>
+
+                <Button Grid.Column="1" Content="Preview Markdown" x:Name="PreviewButton"
+                        Click="PreviewButton_Click" Width="150" Height="35"
+                        Margin="0,0,10,0" Background="#FFC107" Foreground="White"
+                        BorderThickness="0" FontWeight="SemiBold"/>
+
+                <Button Grid.Column="2" Content="Save to Desktop" x:Name="ExportButton"
+                        Click="ExportButton_Click" Width="150" Height="35"
+                        Background="#4CAF50" Foreground="White"
+                        BorderThickness="0" FontWeight="SemiBold"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
