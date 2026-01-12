@@ -242,7 +242,7 @@ namespace OutlookToClaudeApp
             previewWindow.ShowDialog();
         }
 
-        private void ExportButton_Click(object sender, RoutedEventArgs e)
+        private async void ExportButton_Click(object sender, RoutedEventArgs e)
         {
             var selectedEvents = _allEvents.Where(ev => ev.IsSelected).ToList();
 
@@ -253,38 +253,53 @@ namespace OutlookToClaudeApp
                 return;
             }
 
+            var apiKey = ApiKeyBox.Password;
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                MessageBox.Show("Please enter your Claude API Key.",
+                    "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ApiKeyBox.Focus();
+                return;
+            }
+
             try
             {
                 ExportButton.IsEnabled = false;
-                StatusText.Text = $"Saving {selectedEvents.Count} events to desktop...";
+                StatusText.Text = $"Uploading {selectedEvents.Count} events to Claude...";
 
-                // Generate markdown
-                var tempService = new ClaudeApiService("temp-key");
-                var markdown = tempService.GenerateMarkdown(selectedEvents);
+                // Initialize service with real key
+                _claudeService = new ClaudeApiService(apiKey);
 
-                // Save to desktop
-                var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                var fileName = $"calendar-events-{DateTime.Now:yyyyMMdd-HHmmss}.md";
-                var filePath = System.IO.Path.Combine(desktopPath, fileName);
+                // Upload
+                var result = await _claudeService.UploadCalendarAsync(selectedEvents);
 
-                System.IO.File.WriteAllText(filePath, markdown);
+                if (result.Success)
+                {
+                    // Copy to clipboard
+                    Clipboard.SetText(result.FileId);
 
-                // Open the desktop folder
-                System.Diagnostics.Process.Start("explorer.exe", desktopPath);
+                    var message = $"Successfully uploaded to Claude!\n\n" +
+                                  $"File ID: {result.FileId}\n\n" +
+                                  "The File ID has been copied to your clipboard.\n" +
+                                  "You can now paste it into your conversation with Claude.";
 
-                var message = $"Saved {selectedEvents.Count} events to:\n\n{filePath}\n\n" +
-                              "The desktop folder has been opened. You can now drag this file to any Claude project.";
+                    MessageBox.Show(message, "Upload Successful",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
 
-                MessageBox.Show(message, "Export Successful",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-
-                StatusText.Text = $"Saved successfully to desktop!";
+                    StatusText.Text = "Upload successful! File ID copied to clipboard.";
+                }
+                else
+                {
+                    MessageBox.Show(result.Message, "Upload Failed",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    StatusText.Text = "Upload failed.";
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to save: {ex.Message}",
+                MessageBox.Show($"Failed to upload: {ex.Message}",
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error saving file";
+                StatusText.Text = "Error uploading events";
             }
             finally
             {

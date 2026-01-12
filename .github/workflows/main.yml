@@ -13,20 +13,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
 
-    - name: Restore NuGet
-      run: nuget restore
-
-    - name: Build Project
-      run: msbuild -p:Configuration=Release -p:Platform="Any CPU"
+    - name: Publish
+      run: dotnet publish OutlookToClaudeApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OutlookApp
-        path: |
-           **/bin/Release/**/*.exe
-           **/bin/Release/**/*.dll
-           **/bin/Release/**/*.json
+        name: OutlookToClaudeApp
+        path: ./publish
