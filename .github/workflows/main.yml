@@ -12,25 +12,21 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
-    - name: Setup .NET 8
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
 
-    # Restauramos dependencias
-    - name: Restore Dependencies
-      run: dotnet restore OutlookToClaudeApp.sln
+    - name: Restore NuGet
+      run: nuget restore
 
-    # Compilamos y publicamos en un solo paso (Self-Contained = No necesita instalar .NET para correr)
-    - name: Publish App
-      run: dotnet publish OutlookToClaudeApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
+    - name: Build Project
+      run: msbuild -p:Configuration=Release -p:Platform="Any CPU"
 
-    # Subimos el .exe resultante como artefacto
-    - name: Upload EXE Artifact
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OutlookToClaudeApp-Executable
-        path: ./publish/OutlookToClaudeApp.exe
+        name: OutlookApp
+        path: |
+           **/bin/Release/**/*.exe
+           **/bin/Release/**/*.dll
+           **/bin/Release/**/*.json
