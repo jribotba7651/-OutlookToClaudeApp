@@ -15,8 +15,6 @@ namespace OutlookToClaudeApp
         private List<CalendarEvent> _allEvents = new List<CalendarEvent>();
         private OutlookServiceV3 _outlookService;
         private ClaudeApiService _claudeService;
-        private ConfigService _configService;
-        private ApiConfig _config;
 
         public MainWindow()
         {

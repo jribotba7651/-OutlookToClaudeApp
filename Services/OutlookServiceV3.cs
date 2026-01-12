@@ -12,6 +12,26 @@ namespace OutlookToClaudeApp.Services
         private Outlook.Application _outlookApp;
         private Outlook.NameSpace _nameSpace;
 
+        [DllImport("oleaut32.dll", PreserveSig = false)]
+        private static extern void GetActiveObject(ref Guid rclsid, IntPtr pvReserved, [MarshalAs(UnmanagedType.IUnknown)] out object ppunk);
+
+        private static object GetActiveObject(string progId)
+        {
+            try
+            {
+                var type = Type.GetTypeFromProgID(progId);
+                if (type == null) return null;
+
+                var clsid = type.GUID;
+                GetActiveObject(ref clsid, IntPtr.Zero, out var obj);
+                return obj;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public OutlookServiceV3()
         {
             try
@@ -19,9 +39,14 @@ namespace OutlookToClaudeApp.Services
                 // Try to get existing Outlook instance first, then create new if not found
                 try
                 {
-                    _outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
+                    _outlookApp = (Outlook.Application)GetActiveObject("Outlook.Application");
                 }
                 catch
+                {
+                    // Ignore and create new
+                }
+
+                if (_outlookApp == null)
                 {
                     _outlookApp = new Outlook.Application();
                 }
