@@ -19,9 +19,22 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Publish
-      run: dotnet publish OutlookToClaudeApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish --verbosity detailed
+      run: |
+        dotnet publish OutlookToClaudeApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish > build.log 2>&1
+        if ($LASTEXITCODE -ne 0) {
+          Get-Content build.log -Tail 200
+          exit 1
+        }
+
+    - name: Upload Build Log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: build.log
 
     - name: Upload Artifact
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: OutlookToClaudeApp
