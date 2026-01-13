@@ -3,138 +3,111 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using OutlookToClaudeApp.Models;
-using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace OutlookToClaudeApp.Services
 {
     public class OutlookServiceV3 : IDisposable
     {
-        private Outlook.Application _outlookApp;
-        private Outlook.NameSpace _nameSpace;
-
-        [DllImport("oleaut32.dll", PreserveSig = false)]
-        private static extern void GetActiveObject(ref Guid rclsid, IntPtr pvReserved, [MarshalAs(UnmanagedType.IUnknown)] out object ppunk);
-
-        private static object GetActiveObject(string progId)
-        {
-            try
-            {
-                var type = Type.GetTypeFromProgID(progId);
-                if (type == null) return null;
-
-                var clsid = type.GUID;
-                GetActiveObject(ref clsid, IntPtr.Zero, out var obj);
-                return obj;
-            }
-            catch
-            {
-                return null;
-            }
-        }
+        private object _outlookApp;
+        private object _nameSpace;
 
         public OutlookServiceV3()
         {
             try
             {
-                // Try to get existing Outlook instance first, then create new if not found
+                // Try to get the COM type for Outlook
+                Type outlookType = Type.GetTypeFromProgID("Outlook.Application");
+                if (outlookType == null)
+                    throw new Exception("Outlook is not installed on this system.");
+
+                // Attempt to get an active instance or create a new one
                 try
                 {
-                    _outlookApp = (Outlook.Application)GetActiveObject("Outlook.Application");
+                    _outlookApp = Marshal.GetActiveObject("Outlook.Application");
                 }
                 catch
                 {
-                    // Ignore and create new
+                    _outlookApp = Activator.CreateInstance(outlookType);
                 }
 
                 if (_outlookApp == null)
-                {
-                    _outlookApp = new Outlook.Application();
-                }
+                    throw new Exception("Could not start Outlook. Application object is null.");
 
-                if (_outlookApp == null)
-                    throw new Exception("Could not create Outlook instance. Is Outlook installed?");
-
-                _nameSpace = _outlookApp.GetNamespace("MAPI");
+                // Use dynamic to access MAPI namespace
+                dynamic app = _outlookApp;
+                _nameSpace = app.GetNamespace("MAPI");
+                
                 if (_nameSpace == null)
-                    throw new Exception("Could not get MAPI namespace.");
+                    throw new Exception("Could not access Outlook MAPI namespace.");
 
                 _nameSpace.Logon(Type.Missing, Type.Missing, false, false);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                throw new Exception($"Outlook Connection Error: {ex.Message}\nType: {ex.GetType().Name}\nMake sure Outlook is open and NOT using the 'New Outlook' (Modern) version.", ex);
+                string detail = ex.InnerException != null ? $"\nInner: {ex.InnerException.Message}" : "";
+                throw new Exception($"Outlook Connection Error: {ex.Message}{detail}\n\nTIP: Check if Outlook is open and NOT using 'New Outlook' switch.", ex);
             }
         }
 
         public List<CalendarEvent> GetEvents(DateTime startDate, DateTime endDate)
         {
             var events = new List<CalendarEvent>();
-            Outlook.MAPIFolder calendarFolder = null;
-            Outlook.Items items = null;
-
             try
             {
-                calendarFolder = _nameSpace.GetDefaultFolder(Outlook.OlDefaultFolders.olFolderCalendar);
-                items = calendarFolder.Items;
+                dynamic ns = _nameSpace;
+                // 9 = olFolderCalendar
+                dynamic calendarFolder = ns.GetDefaultFolder(9);
+                dynamic items = calendarFolder.Items;
 
-                // IMPORTANT: Include recurring appointments BEFORE sorting
                 items.IncludeRecurrences = true;
-
-                // Sort by start date
                 items.Sort("[Start]", false);
 
-                // Instead of using Restrict() which is problematic, iterate all items
-                // and filter manually - this is more reliable
                 var endDateInclusive = endDate.AddDays(1).AddSeconds(-1);
 
-                foreach (object item in items)
+                foreach (var item in items)
                 {
-                    if (item is Outlook.AppointmentItem appointment)
+                    try
                     {
-                        try
-                        {
-                            // Filter: event overlaps if it starts before range end AND ends after range start
-                            if (appointment.Start <= endDateInclusive && appointment.End >= startDate)
-                            {
-                                var calEvent = new CalendarEvent
-                                {
-                                    Subject = appointment.Subject ?? string.Empty,
-                                    Start = appointment.Start,
-                                    End = appointment.End,
-                                    Location = appointment.Location ?? string.Empty,
-                                    Body = CleanBody(appointment.Body),
-                                    IsAllDayEvent = appointment.AllDayEvent,
-                                    Organizer = GetOrganizerName(appointment),
-                                    Categories = appointment.Categories ?? string.Empty
-                                };
+                        // Use dynamic properties to avoid type checking issues
+                        dynamic appointment = item;
+                        
+                        DateTime start = appointment.Start;
+                        DateTime end = appointment.End;
 
-                                events.Add(calEvent);
-                            }
-                        }
-                        catch (System.Exception ex)
+                        if (start <= endDateInclusive && end >= startDate)
                         {
-                            // Log but continue processing other events
-                            System.Diagnostics.Debug.WriteLine($"Error processing event: {ex.Message}");
-                        }
-                        finally
-                        {
-                            Marshal.ReleaseComObject(appointment);
+                            var calEvent = new CalendarEvent
+                            {
+                                Subject = appointment.Subject ?? string.Empty,
+                                Start = start,
+                                End = end,
+                                Location = appointment.Location ?? string.Empty,
+                                Body = CleanBody(appointment.Body),
+                                IsAllDayEvent = appointment.AllDayEvent,
+                                Organizer = GetOrganizerName(appointment),
+                                Categories = appointment.Categories ?? string.Empty
+                            };
+
+                            events.Add(calEvent);
                         }
                     }
+                    catch
+                    {
+                        // Skip items that aren't appointments or have access errors
+                    }
+                    finally
+                    {
+                        if (item != null && Marshal.IsComObject(item))
+                            Marshal.ReleaseComObject(item);
+                    }
                 }
-            }
-            catch (System.Exception ex)
-            {
-                throw new System.Exception($"Failed to retrieve calendar events: {ex.Message}", ex);
-            }
-            finally
-            {
-                // Always cleanup COM objects
-                if (items != null)
-                    Marshal.ReleaseComObject(items);
 
-                if (calendarFolder != null)
-                    Marshal.ReleaseComObject(calendarFolder);
+                if (items != null) Marshal.ReleaseComObject(items);
+                if (calendarFolder != null) Marshal.ReleaseComObject(calendarFolder);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving events: {ex.Message}", ex);
             }
 
             return events.OrderBy(e => e.Start).ToList();
@@ -142,51 +115,21 @@ namespace OutlookToClaudeApp.Services
 
         private string CleanBody(string body)
         {
-            if (string.IsNullOrWhiteSpace(body))
-                return string.Empty;
-
+            if (string.IsNullOrWhiteSpace(body)) return string.Empty;
             var cleaned = body.Trim();
-
-            // Limit length to avoid huge text blocks
-            if (cleaned.Length > 1000)
-                cleaned = cleaned.Substring(0, 1000) + "...";
-
+            if (cleaned.Length > 1000) cleaned = cleaned.Substring(0, 1000) + "...";
             return cleaned;
         }
 
-        private string GetOrganizerName(Outlook.AppointmentItem appointment)
+        private string GetOrganizerName(dynamic appointment)
         {
             try
             {
-                if (!string.IsNullOrEmpty(appointment.Organizer))
-                    return appointment.Organizer;
-
-                // Try to get organizer from GetOrganizer method
-                var organizer = appointment.GetOrganizer();
-                if (organizer != null)
-                {
-                    var name = organizer.Name;
-                    Marshal.ReleaseComObject(organizer);
-                    return name ?? string.Empty;
-                }
+                return appointment.Organizer ?? string.Empty;
             }
             catch
             {
-                // If we can't get organizer, just return empty
-            }
-
-            return string.Empty;
-        }
-
-        public bool IsOutlookRunning()
-        {
-            try
-            {
-                return _outlookApp != null && _nameSpace != null;
-            }
-            catch
-            {
-                return false;
+                return string.Empty;
             }
         }
 
@@ -196,24 +139,18 @@ namespace OutlookToClaudeApp.Services
             {
                 if (_nameSpace != null)
                 {
-                    _nameSpace.Logoff();
                     Marshal.ReleaseComObject(_nameSpace);
                     _nameSpace = null;
                 }
-
                 if (_outlookApp != null)
                 {
                     Marshal.ReleaseComObject(_outlookApp);
                     _outlookApp = null;
                 }
-
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
             }
-            catch
-            {
-                // Suppress errors during disposal
-            }
+            catch { }
         }
     }
 }
