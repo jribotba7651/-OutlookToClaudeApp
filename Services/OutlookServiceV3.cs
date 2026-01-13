@@ -11,19 +11,24 @@ namespace OutlookToClaudeApp.Services
         private object _outlookApp;
         private object _nameSpace;
 
+        [DllImport("oleaut32.dll", PreserveSig = false)]
+        private static extern void GetActiveObject(ref Guid rclsid, IntPtr pvReserved, [MarshalAs(UnmanagedType.IUnknown)] out object ppunk);
+
         public OutlookServiceV3()
         {
             try
             {
-                // Try to get the COM type for Outlook
+                // Get the CLSID for Outlook
                 Type outlookType = Type.GetTypeFromProgID("Outlook.Application");
                 if (outlookType == null)
-                    throw new Exception("Outlook is not installed on this system.");
+                    throw new Exception("Outlook is not installed.");
 
-                // Attempt to get an active instance or create a new one
+                // Alternative to Marshal.GetActiveObject for .NET 8
                 try
                 {
-                    _outlookApp = Marshal.GetActiveObject("Outlook.Application");
+                    Guid clsid = outlookType.GUID;
+                    GetActiveObject(ref clsid, IntPtr.Zero, out var obj);
+                    _outlookApp = obj;
                 }
                 catch
                 {
@@ -31,21 +36,21 @@ namespace OutlookToClaudeApp.Services
                 }
 
                 if (_outlookApp == null)
-                    throw new Exception("Could not start Outlook. Application object is null.");
+                    throw new Exception("Could not start Outlook.");
 
-                // Use dynamic to access MAPI namespace
                 dynamic app = _outlookApp;
                 _nameSpace = app.GetNamespace("MAPI");
                 
                 if (_nameSpace == null)
-                    throw new Exception("Could not access Outlook MAPI namespace.");
+                    throw new Exception("Could not access MAPI.");
 
-                _nameSpace.Logon(Type.Missing, Type.Missing, false, false);
+                // Use dynamic to call Logon to avoid object type errors
+                dynamic ns = _nameSpace;
+                ns.Logon(Type.Missing, Type.Missing, false, false);
             }
             catch (Exception ex)
             {
-                string detail = ex.InnerException != null ? $"\nInner: {ex.InnerException.Message}" : "";
-                throw new Exception($"Outlook Connection Error: {ex.Message}{detail}\n\nTIP: Check if Outlook is open and NOT using 'New Outlook' switch.", ex);
+                throw new Exception($"Outlook Connection Error: {ex.Message}", ex);
             }
         }
 
