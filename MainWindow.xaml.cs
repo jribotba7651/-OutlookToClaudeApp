@@ -64,8 +64,10 @@ namespace OutlookToClaudeApp
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to load events: {ex.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = ex.ToString();
+                System.Diagnostics.Debug.WriteLine(errorMsg);
+                MessageBox.Show($"Failed to load events:\n\n{ex.Message}\n\nDetails: {ex.GetType().Name}",
+                    "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusText.Text = "Error loading events";
             }
             finally
@@ -256,7 +258,7 @@ namespace OutlookToClaudeApp
             {
                 var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    Filter = "Markdown file (*.md)|*.md|CSV file (*.csv)|*.csv|Text file (*.txt)|*.txt",
+                    Filter = "Markdown file (*.md)|*.md|JSON file (*.json)|*.json|CSV file (*.csv)|*.csv|Text file (*.txt)|*.txt",
                     FileName = $"calendar-events-{DateTime.Now:yyyyMMdd-HHmmss}",
                     InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
                 };
@@ -272,6 +274,9 @@ namespace OutlookToClaudeApp
 
                     switch (ext)
                     {
+                        case ".json":
+                            content = exportService.GenerateJson(selectedEvents);
+                            break;
                         case ".csv":
                             content = exportService.GenerateCsv(selectedEvents);
                             break;

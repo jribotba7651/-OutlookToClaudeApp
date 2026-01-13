@@ -51,12 +51,18 @@ namespace OutlookToClaudeApp.Services
                     _outlookApp = new Outlook.Application();
                 }
 
+                if (_outlookApp == null)
+                    throw new Exception("Could not create Outlook instance. Is Outlook installed?");
+
                 _nameSpace = _outlookApp.GetNamespace("MAPI");
+                if (_nameSpace == null)
+                    throw new Exception("Could not get MAPI namespace.");
+
                 _nameSpace.Logon(Type.Missing, Type.Missing, false, false);
             }
             catch (System.Exception ex)
             {
-                throw new System.Exception($"Failed to connect to Outlook: {ex.Message}. Make sure Outlook is installed and configured.", ex);
+                throw new Exception($"Outlook Connection Error: {ex.Message}\nType: {ex.GetType().Name}\nMake sure Outlook is open and NOT using the 'New Outlook' (Modern) version.", ex);
             }
         }
 

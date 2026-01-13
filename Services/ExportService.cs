@@ -83,6 +83,11 @@ namespace OutlookToClaudeApp.Services
             return sb.ToString();
         }
 
+        public string GenerateJson(List<CalendarEvent> events)
+        {
+            return Newtonsoft.Json.JsonConvert.SerializeObject(events, Newtonsoft.Json.Formatting.Indented);
+        }
+
         private string EscapeCsv(string field)
         {
             if (string.IsNullOrEmpty(field)) return "";
