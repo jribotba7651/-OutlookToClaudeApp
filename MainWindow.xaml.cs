@@ -241,7 +241,7 @@ namespace OutlookToClaudeApp
             previewWindow.ShowDialog();
         }
 
-        private async void ExportButton_Click(object sender, RoutedEventArgs e)
+        private void ExportButton_Click(object sender, RoutedEventArgs e)
         {
             var selectedEvents = _allEvents.Where(ev => ev.IsSelected).ToList();
 
@@ -252,53 +252,51 @@ namespace OutlookToClaudeApp
                 return;
             }
 
-            var apiKey = ApiKeyBox.Password;
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                MessageBox.Show("Please enter your Claude API Key.",
-                    "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
-                ApiKeyBox.Focus();
-                return;
-            }
-
             try
             {
-                ExportButton.IsEnabled = false;
-                StatusText.Text = $"Uploading {selectedEvents.Count} events to Claude...";
-
-                // Initialize service with real key
-                _claudeService = new ClaudeApiService(apiKey);
-
-                // Upload
-                var result = await _claudeService.UploadCalendarAsync(selectedEvents);
-
-                if (result.Success)
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    // Copy to clipboard
-                    Clipboard.SetText(result.FileId);
+                    Filter = "Markdown file (*.md)|*.md|CSV file (*.csv)|*.csv|Text file (*.txt)|*.txt",
+                    FileName = $"calendar-events-{DateTime.Now:yyyyMMdd-HHmmss}",
+                    InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                };
 
-                    var message = $"Successfully uploaded to Claude!\n\n" +
-                                  $"File ID: {result.FileId}\n\n" +
-                                  "The File ID has been copied to your clipboard.\n" +
-                                  "You can now paste it into your conversation with Claude.";
-
-                    MessageBox.Show(message, "Upload Successful",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-
-                    StatusText.Text = "Upload successful! File ID copied to clipboard.";
-                }
-                else
+                if (saveFileDialog.ShowDialog() == true)
                 {
-                    MessageBox.Show(result.Message, "Upload Failed",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    StatusText.Text = "Upload failed.";
+                    ExportButton.IsEnabled = false;
+                    StatusText.Text = "Saving file...";
+
+                    var exportService = new ExportService();
+                    string content = string.Empty;
+                    var ext = System.IO.Path.GetExtension(saveFileDialog.FileName).ToLower();
+
+                    switch (ext)
+                    {
+                        case ".csv":
+                            content = exportService.GenerateCsv(selectedEvents);
+                            break;
+                        case ".txt":
+                            content = exportService.GenerateTxt(selectedEvents);
+                            break;
+                        default:
+                            content = exportService.GenerateMarkdown(selectedEvents);
+                            break;
+                    }
+
+                    System.IO.File.WriteAllText(saveFileDialog.FileName, content);
+
+                    // Open folder
+                    System.Diagnostics.Process.Start("explorer.exe", "/select," + saveFileDialog.FileName);
+
+                    StatusText.Text = "Saved successfully!";
+                    MessageBox.Show($"File saved to:\n{saveFileDialog.FileName}", "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to upload: {ex.Message}",
+                MessageBox.Show($"Failed to save: {ex.Message}",
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error uploading events";
+                StatusText.Text = "Error saving file";
             }
             finally
             {

@@ -44,10 +44,6 @@
             <TextBlock Grid.Row="0" Grid.Column="2" Text="To:" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <DatePicker Grid.Row="0" Grid.Column="3" x:Name="EndDatePicker" Margin="0,0,20,10"/>
 
-            <!-- API Key -->
-            <TextBlock Grid.Row="1" Grid.Column="2" Text="API Key:" VerticalAlignment="Center" Margin="10,0,10,0"/>
-            <PasswordBox Grid.Row="1" Grid.Column="3" x:Name="ApiKeyBox" Margin="0,0,20,0" VerticalAlignment="Center" Height="25"/>
-
             <!-- Load Button -->
             <Button Grid.Row="1" Grid.Column="1" Content="Load Events" x:Name="LoadEventsButton"
                     Click="LoadEventsButton_Click" Width="120" Height="35" HorizontalAlignment="Left"
@@ -160,7 +156,7 @@
                         Margin="0,0,10,0" Background="#FFC107" Foreground="White"
                         BorderThickness="0" FontWeight="SemiBold"/>
 
-                <Button Grid.Column="2" Content="Export to Claude" x:Name="ExportButton"
+                <Button Grid.Column="2" Content="Save to File" x:Name="ExportButton"
                         Click="ExportButton_Click" Width="150" Height="35"
                         Background="#4CAF50" Foreground="White"
                         BorderThickness="0" FontWeight="SemiBold"/>
