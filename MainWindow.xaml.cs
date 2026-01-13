@@ -38,18 +38,21 @@ namespace OutlookToClaudeApp
                 return;
             }
 
+            DateTime start = StartDatePicker.SelectedDate.Value;
+            DateTime end = EndDatePicker.SelectedDate.Value;
+
             try
             {
                 LoadEventsButton.IsEnabled = false;
-                StatusText.Text = "Loading events from Outlook...";
+                StatusText.Text = "Connecting to Outlook (check for permission prompts)...";
 
-                _outlookService?.Dispose();
-                _outlookService = new OutlookServiceV3();
-
-                _allEvents = _outlookService.GetEvents(
-                    StartDatePicker.SelectedDate.Value,
-                    EndDatePicker.SelectedDate.Value
-                );
+                // Run Outlook connection and loading in a background thread
+                await Task.Run(() =>
+                {
+                    _outlookService?.Dispose();
+                    _outlookService = new OutlookServiceV3();
+                    _allEvents = _outlookService.GetEvents(start, end);
+                });
 
                 EventsListBox.ItemsSource = null;
                 EventsListBox.ItemsSource = _allEvents;
@@ -58,7 +61,7 @@ namespace OutlookToClaudeApp
 
                 if (_allEvents.Count == 0)
                 {
-                    MessageBox.Show("No events found in the selected date range.",
+                    MessageBox.Show("No events found in the selected date range. Make sure Outlook is open and you are not using 'New Outlook'.",
                         "No Events", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }

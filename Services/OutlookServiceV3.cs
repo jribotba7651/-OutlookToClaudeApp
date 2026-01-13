@@ -64,55 +64,48 @@ namespace OutlookToClaudeApp.Services
                 dynamic calendarFolder = ns.GetDefaultFolder(9);
                 dynamic items = calendarFolder.Items;
 
+                // Simple restriction string to reduce data handled
+                string startFilter = startDate.ToString("g");
+                string endFilter = endDate.AddDays(1).ToString("g");
+                
                 items.IncludeRecurrences = true;
                 items.Sort("[Start]", false);
 
-                var endDateInclusive = endDate.AddDays(1).AddSeconds(-1);
-
+                // Use a basic loop with a counter to prevent infinite hangs
+                int count = items.Count;
+                int processed = 0;
+                
                 foreach (var item in items)
                 {
+                    if (processed > 500) break; // Safety limit
+                    processed++;
+
                     try
                     {
-                        // Use dynamic properties to avoid type checking issues
                         dynamic appointment = item;
-                        
                         DateTime start = appointment.Start;
                         DateTime end = appointment.End;
 
-                        if (start <= endDateInclusive && end >= startDate)
+                        if (start <= endDate.AddDays(1) && end >= startDate)
                         {
-                            var calEvent = new CalendarEvent
+                            events.Add(new CalendarEvent
                             {
-                                Subject = appointment.Subject ?? string.Empty,
+                                Subject = appointment.Subject ?? "No Subject",
                                 Start = start,
                                 End = end,
-                                Location = appointment.Location ?? string.Empty,
+                                Location = appointment.Location ?? "",
                                 Body = CleanBody(appointment.Body),
                                 IsAllDayEvent = appointment.AllDayEvent,
-                                Organizer = GetOrganizerName(appointment),
-                                Categories = appointment.Categories ?? string.Empty
-                            };
-
-                            events.Add(calEvent);
+                                Organizer = GetOrganizerName(appointment)
+                            });
                         }
                     }
-                    catch
-                    {
-                        // Skip items that aren't appointments or have access errors
-                    }
-                    finally
-                    {
-                        if (item != null && Marshal.IsComObject(item))
-                            Marshal.ReleaseComObject(item);
-                    }
+                    catch { /* Skip and continue */ }
                 }
-
-                if (items != null) Marshal.ReleaseComObject(items);
-                if (calendarFolder != null) Marshal.ReleaseComObject(calendarFolder);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving events: {ex.Message}", ex);
+                throw new Exception($"Error reading items: {ex.Message}");
             }
 
             return events.OrderBy(e => e.Start).ToList();
