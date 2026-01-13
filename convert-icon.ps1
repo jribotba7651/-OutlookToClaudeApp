@@ -1,7 +1,8 @@
 Add-Type -AssemblyName System.Drawing
 
-$pngPath = "C:\Users\juanr\Desktop\OutlookToClaudeApp\icon.png"
-$icoPath = "C:\Users\juanr\Desktop\OutlookToClaudeApp\icon.ico"
+$scriptPath = $PSScriptRoot
+$pngPath = Join-Path $scriptPath "icon.png"
+$icoPath = Join-Path $scriptPath "icon.ico"
 
 # Load the PNG image
 $png = [System.Drawing.Image]::FromFile($pngPath)

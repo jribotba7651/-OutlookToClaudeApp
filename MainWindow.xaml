@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         Title="Calendar Sync for AI" Height="700" Width="1100"
         WindowStartupLocation="CenterScreen"
+        Icon="icon.ico"
         Background="#F5F5F5">
     <Grid Margin="20">
         <Grid.RowDefinitions>
